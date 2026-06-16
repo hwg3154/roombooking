@@ -17,3 +17,7 @@ bookings.db-wal
 # OS files
 .DS_Store
 Thumbs.db
+
+.claude
+.obisidian
+

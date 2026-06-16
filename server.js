@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
@@ -8,6 +9,7 @@ import { randomUUID } from "crypto";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 1234;
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
 const dbPromise = open({
   filename: join(__dirname, "bookings.db"),
@@ -43,6 +45,19 @@ const dbReady = initDb();
 
 // Mutex to serialize booking operations (prevents race conditions)
 let bookingLock = Promise.resolve();
+
+async function notifyDiscord(content) {
+  if (!DISCORD_WEBHOOK_URL) return;
+  try {
+    await fetch(DISCORD_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+  } catch (err) {
+    console.error("Discord webhook failed:", err.message);
+  }
+}
 
 async function withBookingLock(fn) {
   let release;
@@ -116,22 +131,35 @@ app.post("/api/reservations", async (req, res) => {
     return { status: 201, data: { id, booker, date, startTime, endTime, notes } };
   });
 
+  if (result.status === 201) {
+    await notifyDiscord(`📅 A Booking has been added by **${result.data.booker}**
+${result.data.date} · ${result.data.startTime} – ${result.data.endTime}`);
+  }
+
   res.status(result.status).json(result.data);
 });
 
 // Soft-cancel — keeps the record, sets CancelledAt
 app.post("/api/reservations/:id/cancel", async (req, res) => {
   const db = await dbReady;
+  const booking = await db.get("SELECT Booker, Date, StartTime, EndTime FROM reservations WHERE id = ? AND CancelledAt IS NULL", req.params.id);
   const result = await db.run("UPDATE reservations SET CancelledAt = datetime('now') WHERE id = ? AND CancelledAt IS NULL", req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: "Not found or already cancelled" });
+  if (booking) {
+    await notifyDiscord(`❌ **${booking.Booker}'s** Booking was **cancelled**\n${booking.Date} · ${booking.StartTime} – ${booking.EndTime}`);
+  }
   res.json({ ok: true });
 });
 
 app.delete("/api/reservations/:id", async (req, res) => {
   // alias for cancel for backward compat
   const db = await dbReady;
+  const booking = await db.get("SELECT Booker, Date, StartTime, EndTime FROM reservations WHERE id = ? AND CancelledAt IS NULL", req.params.id);
   const result = await db.run("UPDATE reservations SET CancelledAt = datetime('now') WHERE id = ? AND CancelledAt IS NULL", req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: "Not found or already cancelled" });
+  if (booking) {
+    await notifyDiscord(`❌ **${booking.Booker}'s** Booking was **cancelled**\n${booking.Date} · ${booking.StartTime} – ${booking.EndTime}`);
+  }
   res.json({ ok: true });
 });
 

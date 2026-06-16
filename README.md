@@ -14,6 +14,7 @@ A simple web application for managing room reservations on a weekly calendar gri
 
 ```bash
 npm install
+cp .env.example .env # edit .env and fill in your values
 npm start
 ```
 
@@ -62,6 +63,9 @@ Open http://localhost:1234 in your browser.
 
 ## Environment Variables
 
-| Variable | Default | Description       |
-|----------|---------|-------------------|
-| PORT     | 1234    | Server port       |
+| Variable            | Default | Description            |
+|---------------------|---------|------------------------|
+| PORT                | 1234    | Server port            |
+| DISCORD_WEBHOOK_URL | —       | Discord webhook for notifications |
+
+> **Tip:** Notification messages are sent from `server.js` and can be customized there.
