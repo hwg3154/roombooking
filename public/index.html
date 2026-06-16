@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Room Booking</title>
+  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>" />
+</head>
+<body>
+  <header>
+    <h1>ARENA Booking</h1>
+    <div class="week-nav">
+      <button id="prevWeek" aria-label="Previous week">◀</button>
+      <h2 id="weekLabel"></h2>
+      <button id="nextWeek" aria-label="Next week">▶</button>
+      <button id="todayBtn">Today</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="calendar-wrap">
+      <div class="calendar-header" id="calendarHeader"></div>
+      <div class="calendar-grid-wrap">
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+      <div class="selection-banner" id="selectionBanner">
+        <span id="selectionText"></span>
+        <div>
+          <button class="clear-btn" id="clearSelection">Clear</button>
+          <button id="bookSelection">Confirm Selection</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="log-panel">
+      <h3> Booking Log</h3>
+      <button id="refreshLog">Refresh</button>
+      <div class="log-list" id="logList"></div>
+    </aside>
+  </main>
+
+  <!-- Booking modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h3 id="modalTitle">Book This Time</h3>
+      <div class="time-preview" id="modalTimePreview"></div>
+      <form id="bookingForm">
+        <input type="hidden" id="modalDate" />
+        <input type="hidden" id="modalStart" />
+        <input type="hidden" id="modalEnd" />
+        <input type="hidden" id="modalSlots" />
+
+        <label for="booker">Your Name *</label>
+        <input type="text" id="booker" required placeholder="e.g. Jane Doe" autocomplete="name" />
+
+        <label for="notes">Notes</label>
+        <input type="text" id="notes" placeholder="Meeting, focus work, etc." />
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn-book">Book It</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Cancel confirmation -->
+  <div class="modal-overlay" id="deleteOverlay">
+    <div class="modal delete-modal">
+      <h3>Cancel Booking?</h3>
+      <p id="deleteInfo"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="cancelDeleteBtn">Keep It</button>
+        <button type="button" class="btn-delete" id="confirmDeleteBtn">Cancel Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="app.js?v=4"></script>
+</body>
+</html>

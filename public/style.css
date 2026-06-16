@@ -1,0 +1,459 @@
+/* ── Reset & Base ───────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --border: #e2e4e8;
+  --text: #1a1a2e;
+  --muted: #6b7280;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-light: #eef2ff;
+  --free: #ecfdf5;
+  --free-border: #a7f3d0;
+  --booked: #fef3c7;
+  --booked-border: #fcd34d;
+  --selected: #dbeafe;
+  --selected-border: #60a5fa;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+}
+
+html { font-size: 15px; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Header ─────────────────────────────────────── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+header h1 { font-size: 1.35rem; font-weight: 700; }
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-top: .6rem;
+}
+
+.week-nav h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  min-width: 220px;
+  text-align: center;
+}
+
+.week-nav button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .4rem .85rem;
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--text);
+  transition: background .15s, border-color .15s;
+}
+
+.week-nav button:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+/* ── Layout ─────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  max-width: 1400px;
+  margin: 1.25rem auto;
+  padding: 0 1.25rem 2rem;
+}
+
+@media (max-width: 960px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+/* ── Calendar Header ────────────────────────────── */
+.calendar-header {
+  display: grid;
+  grid-template-columns: 54px repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.calendar-header .corner { background: transparent; }
+
+.calendar-header .day-label {
+  text-align: center;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  padding: .4rem 0;
+}
+
+.calendar-header .day-label.today { color: var(--accent); }
+
+/* ── Calendar Grid ──────────────────────────────── */
+.calendar-grid-wrap {
+  max-height: 70vh;
+  overflow-y: auto;
+  border-radius: var(--radius);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: 54px repeat(7, 1fr);
+  gap: 2px;
+}
+
+.time-label {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  font-size: .68rem;
+  color: var(--muted);
+  padding-top: 4px;
+  user-select: none;
+}
+
+.time-label.hour-mark { font-weight: 700; color: var(--text); font-size: .72rem; }
+
+.calendar-grid .day-cell {
+  background: var(--surface);
+  border-radius: 4px;
+  min-height: 36px;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: box-shadow .15s;
+}
+
+.calendar-grid .day-cell.other-month { background: var(--bg); }
+.calendar-grid .day-cell.other-month .slot { pointer-events: none; opacity: .35; }
+.calendar-grid .day-cell.today-col { box-shadow: 0 0 0 2px var(--accent) inset; border-radius: 6px; }
+
+/* ── Slots ──────────────────────────────────────── */
+.slot {
+  flex: 1;
+  border-radius: 4px;
+  font-size: .68rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2px 3px;
+  line-height: 1.2;
+  transition: background .1s, border-color .1s, transform .08s, box-shadow .1s;
+  min-height: 22px;
+  word-break: break-word;
+  user-select: none;
+}
+
+.slot.free {
+  background: var(--free);
+  border: 1px dashed var(--free-border);
+  color: #059669;
+}
+
+.slot.free:hover { background: #d1fae5; transform: scale(1.04); box-shadow: var(--shadow); }
+.slot.free::after { content: "+"; font-size: .8rem; }
+
+.slot.selected {
+  background: var(--selected) !important;
+  border: 1px solid var(--selected-border) !important;
+  color: var(--accent) !important;
+}
+
+.slot.selected::after { content: "✓" !important; }
+
+.slot.booked {
+  background: var(--booked);
+  border: 1px solid var(--booked-border);
+  color: #92400e;
+  cursor: pointer;
+}
+
+.slot.booked:hover { transform: scale(1.03); box-shadow: var(--shadow); }
+.slot.booked strong { font-size: .68rem; }
+.slot.booked span { font-size: .65rem; color: var(--muted); }
+
+/* ── Selection banner ───────────────────────────── */
+.selection-banner {
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: .5rem 1rem;
+  margin-top: .5rem;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--accent);
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selection-banner.visible { display: flex; }
+
+.selection-banner button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: .35rem .8rem;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.selection-banner .clear-btn {
+  background: none;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  margin-right: .4rem;
+}
+
+/* ── Log Panel ──────────────────────────────────── */
+.log-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  position: sticky;
+  top: 120px;
+}
+
+.log-panel h3 {
+  font-size: .95rem;
+  font-weight: 700;
+  margin-bottom: .5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#refreshLog {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .2rem .6rem;
+  font-size: .7rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+#refreshLog:hover { border-color: var(--accent); color: var(--accent); }
+
+.log-list { display: flex; flex-direction: column; gap: .5rem; }
+
+.log-entry {
+  padding: .6rem .75rem;
+  border-radius: 8px;
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  font-size: .78rem;
+}
+
+.log-entry.log-cancelled {
+  border-left-color: var(--danger, #e74c3c);
+  opacity: .85;
+}
+
+.log-entry .log-event-label {
+  display: inline-block;
+  font-size: .6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 1px .35rem;
+  border-radius: 4px;
+  margin-right: .35rem;
+}
+
+.log-entry.log-booked .log-event-label {
+  color: #27ae60;
+  background: #27ae6018;
+}
+
+.log-entry.log-cancelled .log-event-label {
+  color: var(--danger, #e74c3c);
+  background: #e74c3c18;
+}
+
+.log-entry .log-detail {
+  color: var(--muted);
+  font-size: .72rem;
+  margin-top: 1px;
+}
+
+.log-entry .log-top {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.log-entry .log-time { color: var(--muted); font-weight: 400; }
+
+.log-entry .log-notes { color: var(--muted); font-style: italic; margin-top: 2px; }
+
+.log-entry .log-delete {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: .7rem;
+  padding: 0;
+  margin-left: .5rem;
+  opacity: .6;
+}
+
+.log-entry .log-delete:hover { opacity: 1; }
+
+.log-empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: .8rem;
+  padding: 2rem 0;
+}
+
+/* ── Modal ──────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 420px;
+  animation: slideUp .2s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal h3 { margin-bottom: .5rem; font-size: 1.1rem; }
+
+.modal .time-preview {
+  font-size: .85rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: .25rem;
+}
+
+.modal label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: .25rem;
+  margin-top: .75rem;
+  color: var(--muted);
+}
+
+.modal input[type="text"] {
+  width: 100%;
+  padding: .55rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: .9rem;
+  outline: none;
+  transition: border-color .15s;
+}
+
+.modal input[type="text"]:focus { border-color: var(--accent); }
+
+.modal-actions {
+  display: flex;
+  gap: .5rem;
+  margin-top: 1.25rem;
+}
+
+.modal-actions button {
+  flex: 1;
+  padding: .6rem;
+  border-radius: 8px;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background .15s;
+}
+
+.btn-cancel {
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border) !important;
+}
+
+.btn-cancel:hover { background: var(--border); }
+
+.btn-book {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-book:hover { background: var(--accent-hover); }
+
+.btn-delete {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-delete:hover { background: var(--danger-hover); }
+
+.delete-modal p { color: var(--muted); font-size: .85rem; margin: .5rem 0; }
+
+/* ── Toast ──────────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--text);
+  color: #fff;
+  padding: .7rem 1.25rem;
+  border-radius: 8px;
+  font-size: .85rem;
+  font-weight: 500;
+  opacity: 0;
+  transition: transform .3s ease, opacity .3s ease;
+  z-index: 200;
+  pointer-events: none;
+}
+
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#toast.error { background: var(--danger); }

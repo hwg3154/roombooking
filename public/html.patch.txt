@@ -1,0 +1,5 @@
+HTML PATCH — find this line:
+  <h3>Book This Time</h3>
+
+Replace with:
+  <h3 id="modalTitle">Book This Time</h3>

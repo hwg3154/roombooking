@@ -1,0 +1,194 @@
+// ── Config ──────────────────────────────────────────────
+const HOURS = { start: 10, end: 20 };
+const SLOT_MINUTES = 15;
+const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// ── State ───────────────────────────────────────────────
+let weekStart = getMonday(new Date());
+let reservations = [];
+let weekReservations = {};
+let dragging = false;
+let dragDate = null;
+let dragStartSlot = null;
+let dragEndSlot = null;
+let selectedSlots = [];
+// ── Helpers ─────────────────────────────────────────────
+function getMonday(d) {
+  const dt = new Date(d);
+  const day = dt.getDay();
+  const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+  dt.setDate(diff);
+  dt.setHours(0, 0, 0, 0);
+  return dt;
+}
+
+function fmtDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function fmtHour(h) {
+  if (h === 0) return "12 AM";
+  if (h === 12) return "12 PM";
+  return h < 12 ? `${h} AM` : `${h - 12} PM`;
+}
+
+function fmtHourShort(h, m) {
+  const meridiem = h < 12 ? "a" : "p";
+  const hour12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+  if (m === 0) return `${hour12}${meridiem}`;
+  return `${hour12}:${String(m).padStart(2, "0")}${meridiem}`;
+}
+
+function slotToTime(minuteOfDay) {
+  const h = Math.floor(minuteOfDay / 60);
+  const m = minuteOfDay % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function slotToStartH(startMinute) {
+  return slotToTime(startMinute);
+}
+
+function slotToEndH(endMinute) {
+  return slotToTime(endMinute);
+}
+
+function isToday(d) {
+  const t = new Date();
+  return d.getDate() === t.getDate() &&
+    d.getMonth() === t.getMonth() &&
+    d.getFullYear() === t.getFullYear();
+}
+
+function todayStr() { return fmtDate(new Date()); }
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+// ── Toast ───────────────────────────────────────────────
+function toast(msg, isError = false) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = isError ? "error show" : "show";
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.className = ""; }, 2800);
+}
+
+// ── Data ────────────────────────────────────────────────
+async function fetchAll() {
+  const r = await fetch("/api/reservations");
+  reservations = await r.json();
+}
+
+function indexWeekReservations() {
+  weekReservations = {};
+  const dates = weekDates();
+  for (const rv of reservations) {
+    if (dates.has(rv.Date)) {
+      weekReservations[rv.Date] ??= [];
+      weekReservations[rv.Date].push(rv);
+    }
+  }
+}
+
+function weekDates() {
+  const set = new Set();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    set.add(fmtDate(d));
+  }
+  return set;
+}
+
+// Check if a minute-of-day slot falls inside any active reservation for a date
+function slotBooked(dateStr, minute) {
+  const t = slotToTime(minute);
+  const tEnd = slotToTime(minute + SLOT_MINUTES);
+  const rvs = weekReservations[dateStr] || [];
+  for (const rv of rvs) {
+    if (rv.CancelledAt) continue;
+    if (rv.StartTime < tEnd && rv.EndTime > t) return rv;
+  }
+  return null;
+}
+// ── Build Grid ──────────────────────────────────────────
+function buildGrid() {
+  const header = document.getElementById("calendarHeader");
+  const grid = document.getElementById("calendarGrid");
+  header.innerHTML = "";
+  grid.innerHTML = "";
+
+  const today = todayStr();
+  const dates = [];
+
+  header.insertAdjacentHTML("beforeend", `<div class="corner"></div>`);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    dates.push(d);
+    const ds = fmtDate(d);
+    const isTodayCol = ds === today;
+    header.insertAdjacentHTML("beforeend",
+      `<div class="day-label${isTodayCol ? " today" : ""}">${DAYS[i]} ${d.getDate()}</div>`
+    );
+  }
+
+  const startMinute = HOURS.start * 60;
+  const endMinute = HOURS.end * 60;
+
+  for (let min = startMinute; min < endMinute; min += SLOT_MINUTES) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+
+    // Time label — only on hour marks
+    if (m === 0) {
+      grid.insertAdjacentHTML("beforeend",
+        `<div class="time-label hour-mark">${fmtHour(h)}</div>`
+      );
+    } else {
+      grid.insertAdjacentHTML("beforeend",
+        `<div class="time-label">${String(m).padStart(2, "0")}</div>`
+      );
+    }
+
+    for (let i = 0; i < 7; i++) {
+      const ds = fmtDate(dates[i]);
+      const isTodayCol = ds === today;
+
+      const cell = document.createElement("div");
+      cell.className = `day-cell${isTodayCol ? " today-col" : ""}`;
+
+      const bookedRv = slotBooked(ds, min);
+
+      if (bookedRv) {
+        const isTop = bookedRv.StartTime === slotToTime(min);
+        const isCancelTop = bookedRv.CancelledAt && isTop;
+        cell.innerHTML = `<div class="slot booked${isCancelTop ? " cancelled" : ""}" data-id="${bookedRv.id}" title="${escapeHtml(bookedRv.Booker)} — ${escapeHtml(bookedRv.Notes || "")}">
+          ${isTop ? `<strong>${escapeHtml(bookedRv.Booker)}</strong>` : ""}
+        </div>`;
+        if (isCancelTop) {
+          cell.querySelector(".slot").classList.add("cancelled");
+        }
+      } else {
+        const isSelected = selectedSlots.some(s => s.date === ds && s.minute === min);
+        cell.innerHTML = `<div class="slot free${isSelected ? " selected" : ""}" data-date="${ds}" data-minute="${min}"></div>`;
+      }
+
+      grid.appendChild(cell);
+    }
+  }
+
+  // Week label
+  const endDate = new Date(weekStart);
+  endDate.setDate(endDate.getDate() + 6);
+  const opts = { month: "short", day: "numeric" };
+  document.getElementById("weekLabel").textContent =
+    `${weekStart.toLocaleDateString("en", opts)} – ${endDate.toLocaleDateString("en", opts)}, ${endDate.getFullYear()}`;
+}
