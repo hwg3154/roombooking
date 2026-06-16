@@ -41,6 +41,21 @@ async function initDb() {
 
 const dbReady = initDb();
 
+// Mutex to serialize booking operations (prevents race conditions)
+let bookingLock = Promise.resolve();
+
+async function withBookingLock(fn) {
+  let release;
+  const oldLock = bookingLock;
+  bookingLock = new Promise(resolve => { release = resolve; });
+  await oldLock;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
 // ── API ────────────────────────────────────────────
 
 app.use(express.json());
@@ -70,17 +85,16 @@ app.get("/api/reservations/:id", async (req, res) => {
 });
 
 app.post("/api/reservations", async (req, res) => {
-  const db = await dbReady;
   const { booker, date, startTime, endTime, notes } = req.body;
   if (!booker || !date || !startTime || !endTime) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  // Use IMMEDIATE transaction to get exclusive write lock
-  // This prevents race conditions where two requests both pass the conflict check
-  await db.run("BEGIN IMMEDIATE");
+  // Serialize all booking operations to prevent race conditions
+  const result = await withBookingLock(async () => {
+    const db = await dbReady;
 
-  try {
+    // Check for conflicts
     const conflict = await db.get(`
       SELECT * FROM reservations
       WHERE Date = ?
@@ -90,11 +104,7 @@ app.post("/api/reservations", async (req, res) => {
     `, date, endTime, startTime);
 
     if (conflict) {
-      await db.run("ROLLBACK");
-      return res.status(409).json({
-        error: "Time slot conflicts with an existing booking",
-        conflict,
-      });
+      return { status: 409, data: { error: "Time slot conflicts with an existing booking", conflict } };
     }
 
     const id = randomUUID();
@@ -103,13 +113,10 @@ app.post("/api/reservations", async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
     `, id, booker, date, startTime, endTime, notes ?? "");
 
-    await db.run("COMMIT");
+    return { status: 201, data: { id, booker, date, startTime, endTime, notes } };
+  });
 
-    res.status(201).json({ id, booker, date, startTime, endTime, notes });
-  } catch (err) {
-    await db.run("ROLLBACK");
-    throw err;
-  }
+  res.status(result.status).json(result.data);
 });
 
 // Soft-cancel — keeps the record, sets CancelledAt
