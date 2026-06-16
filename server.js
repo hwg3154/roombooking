@@ -76,28 +76,40 @@ app.post("/api/reservations", async (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  const conflict = await db.get(`
-    SELECT * FROM reservations
-    WHERE Date = ?
-      AND CancelledAt IS NULL
-      AND StartTime < ?
-      AND EndTime > ?
-  `, date, endTime, startTime);
+  // Use IMMEDIATE transaction to get exclusive write lock
+  // This prevents race conditions where two requests both pass the conflict check
+  await db.run("BEGIN IMMEDIATE");
 
-  if (conflict) {
-    return res.status(409).json({
-      error: "Time slot conflicts with an existing booking",
-      conflict,
-    });
+  try {
+    const conflict = await db.get(`
+      SELECT * FROM reservations
+      WHERE Date = ?
+        AND CancelledAt IS NULL
+        AND StartTime < ?
+        AND EndTime > ?
+    `, date, endTime, startTime);
+
+    if (conflict) {
+      await db.run("ROLLBACK");
+      return res.status(409).json({
+        error: "Time slot conflicts with an existing booking",
+        conflict,
+      });
+    }
+
+    const id = randomUUID();
+    await db.run(`
+      INSERT INTO reservations (id, Booker, Date, StartTime, EndTime, Notes)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, id, booker, date, startTime, endTime, notes ?? "");
+
+    await db.run("COMMIT");
+
+    res.status(201).json({ id, booker, date, startTime, endTime, notes });
+  } catch (err) {
+    await db.run("ROLLBACK");
+    throw err;
   }
-
-  const id = randomUUID();
-  await db.run(`
-    INSERT INTO reservations (id, Booker, Date, StartTime, EndTime, Notes)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `, id, booker, date, startTime, endTime, notes ?? "");
-
-  res.status(201).json({ id, booker, date, startTime, endTime, notes });
 });
 
 // Soft-cancel — keeps the record, sets CancelledAt

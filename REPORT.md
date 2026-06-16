@@ -223,16 +223,3 @@ The API responded correctly with existing reservation data from the database.
 | `bookings.db` | Existing data was preserved |
 
 ---
-
-### Accessing the App
-
-The server is running at: **http://localhost:1234**
-
-API smoke test example:
-```bash
-# List all reservations
-curl http://localhost:1234/api/reservations
-
-# List reservations for a specific date
-curl "http://localhost:1234/api/reservations?date=2026-06-19"
-```
